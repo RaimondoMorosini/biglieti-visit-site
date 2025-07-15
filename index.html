@@ -51,94 +51,114 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script>
-    const form = document.getElementById('imageForm');
-    const imageInput = document.getElementById('imageInput');
-    const widthInput = document.getElementById('widthInput');
-    const heightInput = document.getElementById('heightInput');
-    const previewCanvas = document.getElementById('previewCanvas');
-    const ctx = previewCanvas.getContext('2d');
-    let image = new Image();
+<script>
+  const form = document.getElementById('imageForm');
+  const imageInput = document.getElementById('imageInput');
+  const widthInput = document.getElementById('widthInput');
+  const heightInput = document.getElementById('heightInput');
+  const previewCanvas = document.getElementById('previewCanvas');
+  const ctx = previewCanvas.getContext('2d');
+  let image = new Image();
 
-    imageInput.addEventListener('change', e => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = evt => {
-          image.src = evt.target.result;
-        };
-        reader.readAsDataURL(file);
+  imageInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = evt => {
+        image.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  image.onload = () => {
+    updatePreview();
+  };
+
+  [widthInput, heightInput].forEach(input => {
+    input.addEventListener('input', updatePreview);
+  });
+
+  function updatePreview() {
+    const mmToPx = mm => mm * 3.7795;
+    const imgW = parseFloat(widthInput.value);
+    const imgH = parseFloat(heightInput.value);
+    if (!imgW || !imgH || isNaN(imgW) || isNaN(imgH) || !image.src) return;
+
+    const pxW = mmToPx(imgW);
+    const pxH = mmToPx(imgH);
+    const A4Width = mmToPx(210);
+    const A4Height = mmToPx(297);
+
+    const cols = Math.floor(A4Width / pxW);
+    const rows = Math.floor(A4Height / pxH);
+    const offsetX = (A4Width - (cols * pxW)) / 2;
+    const offsetY = (A4Height - (rows * pxH)) / 2;
+
+    previewCanvas.width = A4Width;
+    previewCanvas.height = A4Height;
+
+    // Sfondo bianco
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, A4Width, A4Height);
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = offsetX + col * pxW;
+        const y = offsetY + row * pxH;
+        ctx.drawImage(image, x, y, pxW, pxH);
+        ctx.setLineDash([5, 3]);
+        ctx.strokeStyle = '#888';
+        ctx.strokeRect(x, y, pxW, pxH);
       }
-    });
+    }
+  }
 
-    image.onload = () => {
-      updatePreview();
-    };
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!image.src || !widthInput.value || !heightInput.value) return;
 
-    [widthInput, heightInput].forEach(input => {
-      input.addEventListener('input', updatePreview);
-    });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
 
-    function updatePreview() {
-      const mmToPx = mm => mm * 3.7795;
-      const imgW = parseFloat(widthInput.value);
-      const imgH = parseFloat(heightInput.value);
-      if (!imgW || !imgH || isNaN(imgW) || isNaN(imgH) || !image.src) return;
+    const canvas = document.createElement('canvas');
+    const mmToPx = mm => mm * 3.7795;
+    const imgW = parseFloat(widthInput.value);
+    const imgH = parseFloat(heightInput.value);
+    const pxW = mmToPx(imgW);
+    const pxH = mmToPx(imgH);
+    const A4Width = mmToPx(210);
+    const A4Height = mmToPx(297);
 
-      const pxW = mmToPx(imgW);
-      const pxH = mmToPx(imgH);
-      const A4Width = mmToPx(210);
-      const A4Height = mmToPx(297);
+    const cols = Math.floor(A4Width / pxW);
+    const rows = Math.floor(A4Height / pxH);
+    const offsetX = (A4Width - (cols * pxW)) / 2;
+    const offsetY = (A4Height - (rows * pxH)) / 2;
 
-      previewCanvas.width = A4Width;
-      previewCanvas.height = A4Height;
-      ctx.clearRect(0, 0, A4Width, A4Height);
+    canvas.width = A4Width;
+    canvas.height = A4Height;
+    const cctx = canvas.getContext('2d');
 
-      for (let y = 0; y + pxH <= A4Height; y += pxH) {
-        for (let x = 0; x + pxW <= A4Width; x += pxW) {
-          ctx.drawImage(image, x, y, pxW, pxH);
-          // Draw dashed border
-          ctx.setLineDash([5, 3]);
-          ctx.strokeStyle = '#888';
-          ctx.strokeRect(x, y, pxW, pxH);
-        }
+    // Sfondo bianco
+    cctx.fillStyle = "#ffffff";
+    cctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = offsetX + col * pxW;
+        const y = offsetY + row * pxH;
+        cctx.drawImage(image, x, y, pxW, pxH);
+        cctx.setLineDash([5, 3]);
+        cctx.strokeStyle = '#888';
+        cctx.strokeRect(x, y, pxW, pxH);
       }
     }
 
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
-      if (!image.src || !widthInput.value || !heightInput.value) return;
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+    pdf.save('immagini_a4.pdf');
+  });
+</script>
 
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-
-      const canvas = document.createElement('canvas');
-      const mmToPx = mm => mm * 3.7795;
-      const imgW = parseFloat(widthInput.value);
-      const imgH = parseFloat(heightInput.value);
-      const pxW = mmToPx(imgW);
-      const pxH = mmToPx(imgH);
-      const A4Width = mmToPx(210);
-      const A4Height = mmToPx(297);
-
-      canvas.width = A4Width;
-      canvas.height = A4Height;
-      const cctx = canvas.getContext('2d');
-
-      cctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (let y = 0; y + pxH <= A4Height; y += pxH) {
-        for (let x = 0; x + pxW <= A4Width; x += pxW) {
-          cctx.drawImage(image, x, y, pxW, pxH);
-          cctx.setLineDash([5, 3]);
-          cctx.strokeStyle = '#888';
-          cctx.strokeRect(x, y, pxW, pxH);
-        }
-      }
-
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
-      pdf.save('immagini_a4.pdf');
-    });
-  </script>
 </body>
 </html>
