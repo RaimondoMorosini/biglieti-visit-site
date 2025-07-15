@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Generatore A4 - Immagine Ripetuta</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link 
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" 
+    rel="stylesheet">
+  <style>
+    #preview-container {
+      border: 1px dashed #ccc;
+      padding: 10px;
+      margin-top: 20px;
+    }
+    canvas {
+      max-width: 100%;
+      height: auto;
+    }
+    .form-control:invalid {
+      border-color: red;
+    }
+  </style>
+</head>
+<body class="bg-light p-4">
+  <div class="container">
+    <h2 class="mb-4">Generatore PDF A4 con Immagine Ripetuta</h2>
+
+    <form id="imageForm" class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Carica Immagine</label>
+        <input type="file" id="imageInput" accept="image/*" class="form-control" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Larghezza (mm)</label>
+        <input type="number" id="widthInput" class="form-control" min="1" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Altezza (mm)</label>
+        <input type="number" id="heightInput" class="form-control" min="1" required>
+      </div>
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary">Genera PDF</button>
+      </div>
+    </form>
+
+    <div id="preview-container" class="mt-4">
+      <h5>Anteprima</h5>
+      <canvas id="previewCanvas"></canvas>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    const form = document.getElementById('imageForm');
+    const imageInput = document.getElementById('imageInput');
+    const widthInput = document.getElementById('widthInput');
+    const heightInput = document.getElementById('heightInput');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const ctx = previewCanvas.getContext('2d');
+    let image = new Image();
+
+    imageInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = evt => {
+          image.src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    image.onload = () => {
+      updatePreview();
+    };
+
+    [widthInput, heightInput].forEach(input => {
+      input.addEventListener('input', updatePreview);
+    });
+
+    function updatePreview() {
+      const mmToPx = mm => mm * 3.7795;
+      const imgW = parseFloat(widthInput.value);
+      const imgH = parseFloat(heightInput.value);
+      if (!imgW || !imgH || isNaN(imgW) || isNaN(imgH) || !image.src) return;
+
+      const pxW = mmToPx(imgW);
+      const pxH = mmToPx(imgH);
+      const A4Width = mmToPx(210);
+      const A4Height = mmToPx(297);
+
+      previewCanvas.width = A4Width;
+      previewCanvas.height = A4Height;
+      ctx.clearRect(0, 0, A4Width, A4Height);
+
+      for (let y = 0; y + pxH <= A4Height; y += pxH) {
+        for (let x = 0; x + pxW <= A4Width; x += pxW) {
+          ctx.drawImage(image, x, y, pxW, pxH);
+          // Draw dashed border
+          ctx.setLineDash([5, 3]);
+          ctx.strokeStyle = '#888';
+          ctx.strokeRect(x, y, pxW, pxH);
+        }
+      }
+    }
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      if (!image.src || !widthInput.value || !heightInput.value) return;
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+
+      const canvas = document.createElement('canvas');
+      const mmToPx = mm => mm * 3.7795;
+      const imgW = parseFloat(widthInput.value);
+      const imgH = parseFloat(heightInput.value);
+      const pxW = mmToPx(imgW);
+      const pxH = mmToPx(imgH);
+      const A4Width = mmToPx(210);
+      const A4Height = mmToPx(297);
+
+      canvas.width = A4Width;
+      canvas.height = A4Height;
+      const cctx = canvas.getContext('2d');
+
+      cctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let y = 0; y + pxH <= A4Height; y += pxH) {
+        for (let x = 0; x + pxW <= A4Width; x += pxW) {
+          cctx.drawImage(image, x, y, pxW, pxH);
+          cctx.setLineDash([5, 3]);
+          cctx.strokeStyle = '#888';
+          cctx.strokeRect(x, y, pxW, pxH);
+        }
+      }
+
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+      pdf.save('immagini_a4.pdf');
+    });
+  </script>
+</body>
+</html>
