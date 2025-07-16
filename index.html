@@ -42,7 +42,12 @@
       <div class="col-12">
         <button type="submit" class="btn btn-primary">Genera PDF</button>
       </div>
+      <div class="col-12">
+        <div id="feedbackMessage" class="alert alert-success d-none" role="alert">
+          PDF generato con successo!
+        </div>
     </form>
+    
 
     <div id="preview-container" class="mt-4">
       <h5>Anteprima</h5>
@@ -157,6 +162,16 @@
     const imgData = canvas.toDataURL('image/jpeg', 1.0);
     pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
     pdf.save('immagini_a4.pdf');
+    // Mostra messaggio di feedback
+const feedback = document.getElementById('feedbackMessage');
+feedback.classList.remove('d-none');
+feedback.classList.add('show');
+
+// Nasconde il messaggio dopo 3 secondi
+setTimeout(() => {
+  feedback.classList.remove('show');
+  feedback.classList.add('d-none');
+}, 3000);
   });
 </script>
 
